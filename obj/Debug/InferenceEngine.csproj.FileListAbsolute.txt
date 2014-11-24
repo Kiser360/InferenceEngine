@@ -1,0 +1,8 @@
+c:\users\superuser\documents\visual studio 2013\Projects\InferenceEngine\InferenceEngine\bin\Debug\InferenceEngine.exe.config
+c:\users\superuser\documents\visual studio 2013\Projects\InferenceEngine\InferenceEngine\obj\Debug\InferenceEngine.csprojResolveAssemblyReference.cache
+c:\users\superuser\documents\visual studio 2013\Projects\InferenceEngine\InferenceEngine\bin\Debug\InferenceEngine.exe
+c:\users\superuser\documents\visual studio 2013\Projects\InferenceEngine\InferenceEngine\bin\Debug\InferenceEngine.pdb
+c:\users\superuser\documents\visual studio 2013\Projects\InferenceEngine\InferenceEngine\bin\Debug\System.Data.SQLite.dll
+c:\users\superuser\documents\visual studio 2013\Projects\InferenceEngine\InferenceEngine\bin\Debug\System.Data.SQLite.xml
+c:\users\superuser\documents\visual studio 2013\Projects\InferenceEngine\InferenceEngine\obj\Debug\InferenceEngine.exe
+c:\users\superuser\documents\visual studio 2013\Projects\InferenceEngine\InferenceEngine\obj\Debug\InferenceEngine.pdb
