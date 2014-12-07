@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Data.SQLite;
 using System.IO;
 
 namespace InferenceEngine
@@ -12,19 +11,14 @@ namespace InferenceEngine
     {
         static void Main(string[] args)
         {
-            const string DEF_DB = "MyDatabase.sqlite";
-
-            //Lets see if we need to create the DB
-            if (!File.Exists(DEF_DB))
-            {
-                SQLiteConnection.CreateFile(DEF_DB);
-                Console.WriteLine("Creating DB for the first time");
-            }
+            InfEng myEngine = new InfEng();
+            myEngine = new InfEng("myCrazyPath.sqlite");
 
 
 
             //I NEED TIME TO READ THE CONSOLE!!!!
             //    **This pauses execution**
+            Console.WriteLine("\n\nWaiting for you to hit enter to exit...");
             Console.Read();
         }
     }
