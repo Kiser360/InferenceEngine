@@ -11,9 +11,15 @@ namespace InferenceEngine
     {
         static void Main(string[] args)
         {
+            //Briefly check the Constructor
             InfEng myEngine = new InfEng();
-            myEngine = new InfEng("myCrazyPath.sqlite");
+            myEngine = new InfEng("newCrazyPath.sqlite");
 
+            //Test the private addAll() function
+            //  -- Check console for results
+            myEngine.test_addAll();
+
+            myEngine.test_removeAll();
 
 
             //I NEED TIME TO READ THE CONSOLE!!!!
