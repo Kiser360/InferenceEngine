@@ -101,15 +101,14 @@ namespace InferenceEngine
             //Attempt to add the values to all tables.  addToTable will return 
             //  false if the set can't be added due to a unique violation.
             //  In which case there is a contradiction and we return false.
-            bool result;
+            bool result = true;
 
-            result = addToTable("all", noun1, noun2);
-            if (result)
+            if (addToTable("all", noun1, noun2))
                 removeFromTable("all", noun1, noun2);
             else
             {
                 Console.WriteLine("Contradiction found in All");
-                return false;
+                result = false;
             }
 
             if (addToTable("no", noun1, noun2))
@@ -117,7 +116,7 @@ namespace InferenceEngine
             else
             {
                 Console.WriteLine("Contradiction found in No");
-                return false;
+                result = false;
             }
 
             if (addToTable("some", noun1, noun2))
@@ -125,11 +124,11 @@ namespace InferenceEngine
             else
             {
                 Console.WriteLine("Contradiction found in Some");
-                return false;
+                result = false;
             }
 
 
-            return true;
+            return result;
         }
 
         public bool insAll(string noun1, string noun2)
@@ -286,41 +285,40 @@ namespace InferenceEngine
             //Test: No contradictions in an empty DB
             //Assert: True
             Console.WriteLine("Test 1: Contradictions in an empty DB?");
-            if (checkContradictions("dog", "mammals"))
+            if (!checkContradictions("dog", "mammals"))
                 Console.WriteLine("Test failed\n");
             else
                 Console.WriteLine("** Test Success\n");
-            reset();
 
             //Test: Contradiction in all table
             //Assert: False
             Console.WriteLine("Test 2: Contradiction in All table");
             addToTable("all", "dog", "mammals");
-            if (!checkContradictions("dog", "mammals"))
+            if (checkContradictions("dog", "mammals"))
                 Console.WriteLine("Test failed\n");
             else
                 Console.WriteLine("** Test Success\n");
-            reset();
+            removeFromTable("all", "dog", "mammals");
 
             //Test: Contradiction in no table
             //Assert: False
             Console.WriteLine("Test 3: Contradiction in No table");
             addToTable("no", "dog", "mammals");
-            if (!checkContradictions("dog", "mammals"))
+            if (checkContradictions("dog", "mammals"))
                 Console.WriteLine("Test failed\n");
             else
                 Console.WriteLine("** Test Success\n");
-            reset();
+            removeFromTable("no", "dog", "mammals");
 
             //Test: Contradiction in some table
             //Assert: False
             Console.WriteLine("Test 4: Contradiction in Some table");
             addToTable("some", "dog", "mammals");
-            if (!checkContradictions("dog", "mammals"))
+            if (checkContradictions("dog", "mammals"))
                 Console.WriteLine("Test failed\n");
             else
                 Console.WriteLine("** Test Success\n");
-            reset();
+            removeFromTable("some", "dog", "mammals");
 
         }
 
