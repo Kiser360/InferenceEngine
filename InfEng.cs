@@ -101,14 +101,13 @@ namespace InferenceEngine
             //Attempt to add the values to all tables.  addToTable will return 
             //  false if the set can't be added due to a unique violation.
             //  In which case there is a contradiction and we return false.
-            bool result = true;
 
             if (addToTable("all", noun1, noun2))
                 removeFromTable("all", noun1, noun2);
             else
             {
                 Console.WriteLine("Contradiction found in All");
-                result = false;
+                return false;
             }
 
             if (addToTable("no", noun1, noun2))
@@ -116,7 +115,7 @@ namespace InferenceEngine
             else
             {
                 Console.WriteLine("Contradiction found in No");
-                result = false;
+                return false;
             }
 
             if (addToTable("some", noun1, noun2))
@@ -124,11 +123,11 @@ namespace InferenceEngine
             else
             {
                 Console.WriteLine("Contradiction found in Some");
-                result = false;
+                return false;
             }
 
 
-            return result;
+            return true;
         }
 
         public bool insAll(string noun1, string noun2)
