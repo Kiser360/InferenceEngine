@@ -66,6 +66,8 @@ namespace InferenceEngine
             }
 
             m_dbConnection.Close();
+            if (result)
+                Console.WriteLine(string.Format("Added {0} and {1} to {2}", noun1, noun2, table));
 
             return result;
         }
@@ -92,38 +94,41 @@ namespace InferenceEngine
             return result;
         }
 
+
+        //Returns false if a contradiction is found in any table
         private bool checkContradictions(string noun1, string noun2)
         {
-            m_dbConnection.Open();
+            //Attempt to add the values to all tables.  addToTable will return 
+            //  false if the set can't be added due to a unique violation.
+            //  In which case there is a contradiction and we return false.
+            bool result;
 
-            string sql = string.Format("SELECT * FROM rules_{0} WHERE noun1 = \"{1}\" and noun2 = \"{2}\"", "all", noun1, noun2);
-            SQLiteCommand command = new SQLiteCommand(sql, m_dbConnection);
-            SQLiteDataReader reader = command.ExecuteReader();
-            if (reader.HasRows)
+            result = addToTable("all", noun1, noun2);
+            if (result)
+                removeFromTable("all", noun1, noun2);
+            else
             {
-                m_dbConnection.Close();
+                Console.WriteLine("Contradiction found in All");
                 return false;
             }
 
-            sql = string.Format("SELECT * FROM rules_{0} WHERE noun1 = \"{1}\" and noun2 = \"{2}\"", "no", noun1, noun2);
-            command = new SQLiteCommand(sql, m_dbConnection);
-            reader = command.ExecuteReader();
-            if (reader.HasRows)
+            if (addToTable("no", noun1, noun2))
+                removeFromTable("no", noun1, noun2);
+            else
             {
-                m_dbConnection.Close();
+                Console.WriteLine("Contradiction found in No");
                 return false;
             }
 
-            sql = string.Format("SELECT * FROM rules_{0} WHERE noun1 = \"{1}\" and noun2 = \"{2}\"", "some", noun1, noun2);
-            command = new SQLiteCommand(sql, m_dbConnection);
-            reader = command.ExecuteReader();
-            if (reader.HasRows)
+            if (addToTable("some", noun1, noun2))
+                removeFromTable("some", noun1, noun2);
+            else
             {
-                m_dbConnection.Close();
+                Console.WriteLine("Contradiction found in Some");
                 return false;
             }
 
-            m_dbConnection.Close();
+
             return true;
         }
 
@@ -139,30 +144,19 @@ namespace InferenceEngine
         public void reset()
         {
             m_dbConnection.Open();
-            string sql = "DROP TABLE rules_all";
+            string sql = "DELETE FROM rules_all";
             SQLiteCommand command = new SQLiteCommand(sql, m_dbConnection);
             command.ExecuteNonQuery();
 
-            sql = "DROP TABLE rules_no";
+            sql = "DELETE FROM rules_no";
             command = new SQLiteCommand(sql, m_dbConnection);
             command.ExecuteNonQuery();
 
-            sql = "DROP TABLE rules_some";
+            sql = "DELETE FROM rules_some";
             command = new SQLiteCommand(sql, m_dbConnection);
             command.ExecuteNonQuery();
 
-            //Time to create the tables if necessary
-            string create_ALL = "CREATE TABLE rules_all(noun1 TEXT NOT NULL, noun2 TEXT NOT NULL, UNIQUE(noun1, noun2))";
-            string create_NO = "CREATE TABLE rules_no(noun1 TEXT NOT NULL, noun2 TEXT NOT NULL, UNIQUE(noun1, noun2))";
-            string create_SOME = "CREATE TABLE rules_some(noun1 TEXT NOT NULL, noun2 TEXT NOT NULL, UNIQUE(noun1, noun2))";
-
-            //Execute the SQL commands
-            command = new SQLiteCommand(create_ALL, m_dbConnection);
-            command.ExecuteNonQuery();
-            command = new SQLiteCommand(create_NO, m_dbConnection);
-            command.ExecuteNonQuery();
-            command = new SQLiteCommand(create_SOME, m_dbConnection);
-            command.ExecuteNonQuery();
+            
 
             m_dbConnection.Close();
             return;
@@ -178,6 +172,7 @@ namespace InferenceEngine
             //Test: Inserting values to empty InfEng
             //Assert: True
             Console.WriteLine("Test 1: Adding Dog and Mammal");
+            
             if (!addToTable("all", "Dog", "Mammal"))
                 Console.WriteLine("Test failed\n");
             else
@@ -281,6 +276,52 @@ namespace InferenceEngine
             else
                 Console.WriteLine(string.Format("Test failed: {0} iterations\n", iterations));
             m_dbConnection.Close();
+        }
+
+        public void test_checkContradictions()
+        {
+            // We need a clean DB for consistant results
+            reset();
+
+            //Test: No contradictions in an empty DB
+            //Assert: True
+            Console.WriteLine("Test 1: Contradictions in an empty DB?");
+            if (checkContradictions("dog", "mammals"))
+                Console.WriteLine("Test failed\n");
+            else
+                Console.WriteLine("** Test Success\n");
+            reset();
+
+            //Test: Contradiction in all table
+            //Assert: False
+            Console.WriteLine("Test 2: Contradiction in All table");
+            addToTable("all", "dog", "mammals");
+            if (!checkContradictions("dog", "mammals"))
+                Console.WriteLine("Test failed\n");
+            else
+                Console.WriteLine("** Test Success\n");
+            reset();
+
+            //Test: Contradiction in no table
+            //Assert: False
+            Console.WriteLine("Test 3: Contradiction in No table");
+            addToTable("no", "dog", "mammals");
+            if (!checkContradictions("dog", "mammals"))
+                Console.WriteLine("Test failed\n");
+            else
+                Console.WriteLine("** Test Success\n");
+            reset();
+
+            //Test: Contradiction in some table
+            //Assert: False
+            Console.WriteLine("Test 4: Contradiction in Some table");
+            addToTable("some", "dog", "mammals");
+            if (!checkContradictions("dog", "mammals"))
+                Console.WriteLine("Test failed\n");
+            else
+                Console.WriteLine("** Test Success\n");
+            reset();
+
         }
 
 

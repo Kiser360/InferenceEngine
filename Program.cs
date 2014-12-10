@@ -21,6 +21,8 @@ namespace InferenceEngine
 
             myEngine.test_removeAll();
 
+            myEngine.test_checkContradictions();
+
 
             //I NEED TIME TO READ THE CONSOLE!!!!
             //    **This pauses execution**
