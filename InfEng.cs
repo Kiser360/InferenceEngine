@@ -92,6 +92,41 @@ namespace InferenceEngine
             return result;
         }
 
+        private bool checkContradictions(string noun1, string noun2)
+        {
+            m_dbConnection.Open();
+
+            string sql = string.Format("SELECT * FROM rules_{0} WHERE noun1 = \"{1}\" and noun2 = \"{2}\"", "all", noun1, noun2);
+            SQLiteCommand command = new SQLiteCommand(sql, m_dbConnection);
+            SQLiteDataReader reader = command.ExecuteReader();
+            if (reader.HasRows)
+            {
+                m_dbConnection.Close();
+                return false;
+            }
+
+            sql = string.Format("SELECT * FROM rules_{0} WHERE noun1 = \"{1}\" and noun2 = \"{2}\"", "no", noun1, noun2);
+            command = new SQLiteCommand(sql, m_dbConnection);
+            reader = command.ExecuteReader();
+            if (reader.HasRows)
+            {
+                m_dbConnection.Close();
+                return false;
+            }
+
+            sql = string.Format("SELECT * FROM rules_{0} WHERE noun1 = \"{1}\" and noun2 = \"{2}\"", "some", noun1, noun2);
+            command = new SQLiteCommand(sql, m_dbConnection);
+            reader = command.ExecuteReader();
+            if (reader.HasRows)
+            {
+                m_dbConnection.Close();
+                return false;
+            }
+
+            m_dbConnection.Close();
+            return true;
+        }
+
         public bool insAll(string noun1, string noun2)
         {
             if (!addAll(noun1, noun2))
@@ -144,37 +179,40 @@ namespace InferenceEngine
             //Assert: True
             Console.WriteLine("Test 1: Adding Dog and Mammal");
             if (!addAll("Dog", "Mammal"))
-                Console.WriteLine("Test failed");
+                Console.WriteLine("Test failed\n");
             else
-                Console.WriteLine("** Test Success");
+                Console.WriteLine("** Test Success\n");
 
             //Test: non-unique noun1
             //Assert: True
             Console.WriteLine("Test 2: Adding Dog and Wet");
             if (!addAll("Dog", "Wet"))
-                Console.WriteLine("Test failed");
+                Console.WriteLine("Test failed\n");
             else
-                Console.WriteLine("** Test Success");
+                Console.WriteLine("** Test Success\n");
 
             //Test: non-unique noun2
             //Assert: True
             Console.WriteLine("Test 3: Adding Cat and Mammal");
             if (!addAll("Cat", "Mammal"))
-                Console.WriteLine("Test failed");
+                Console.WriteLine("Test failed\n");
             else
-                Console.WriteLine("** Test Success");
+                Console.WriteLine("** Test Success\n");
 
             //Test: non-unique noun1 and noun2
             //Assert: False
             Console.WriteLine("Test 4: Adding Cat and Mammal");
             if (addAll("Cat", "Mammal"))
-                Console.WriteLine("Test failed");
+                Console.WriteLine("Test failed\n");
             else
-                Console.WriteLine("** Test Success");
+                Console.WriteLine("** Test Success\n");
 
             return;
         }
 
+
+        //TODO: Desparately need to clean this up with some sort of a query function
+        //Tests are performed by quering the tables for values that we expect to not be there
         public void test_removeAll()
         {
             // We need a clean DB for consistant results
@@ -194,9 +232,9 @@ namespace InferenceEngine
                 iterations++;
             }
             if (iterations == 0)
-                Console.WriteLine("** Test Success");
+                Console.WriteLine("** Test Success\n");
             else
-                Console.WriteLine(string.Format("Test failed: {0} iterations", iterations));
+                Console.WriteLine(string.Format("Test failed: {0} iterations\n", iterations));
             m_dbConnection.Close();
 
 
@@ -216,9 +254,9 @@ namespace InferenceEngine
                 iterations++;
             }
             if (iterations == 0)
-                Console.WriteLine("** Test Success");
+                Console.WriteLine("** Test Success\n");
             else
-                Console.WriteLine(string.Format("Test failed: {0} iterations", iterations));
+                Console.WriteLine(string.Format("Test failed: {0} iterations\n", iterations));
             m_dbConnection.Close();
 
 
@@ -239,9 +277,9 @@ namespace InferenceEngine
                 iterations++;
             }
             if (iterations == 0)
-                Console.WriteLine("** Test Success");
+                Console.WriteLine("** Test Success\n");
             else
-                Console.WriteLine(string.Format("Test failed: {0} iterations", iterations));
+                Console.WriteLine(string.Format("Test failed: {0} iterations\n", iterations));
             m_dbConnection.Close();
         }
 
