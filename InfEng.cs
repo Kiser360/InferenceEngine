@@ -47,10 +47,10 @@ namespace InferenceEngine
             m_dbConnection.Close();
         }
 
-        private bool addAll(string noun1, string noun2)
+        private bool addToTable(string table, string noun1, string noun2)
         {
             bool result = true;
-            string sql = "INSERT INTO rules_all(noun1, noun2) VALUES (\"" + noun1 + "\", \"" + noun2 + "\")";
+            string sql = string.Format("INSERT INTO rules_{0}(noun1, noun2) VALUES (\"{1}\", \"{2}\")", table, noun1, noun2);
             
             m_dbConnection.Open();
 
@@ -71,11 +71,11 @@ namespace InferenceEngine
         }
 
 
-        private bool removeAll(string noun1, string noun2)
+        private bool removeFromTable(string table, string noun1, string noun2)
         {
             bool result = true;
             m_dbConnection.Open();
-            string sql = "DELETE FROM rules_all where noun1 = \"" + noun1 + "\" and noun2 =  \"" + noun2 + "\"";
+            string sql = string.Format("DELETE FROM rules_{0} where noun1 = \"{1}\" and noun2 =  \"{2}\"", table, noun1, noun2);
             SQLiteCommand command = new SQLiteCommand(sql, m_dbConnection);
             
             try
@@ -129,7 +129,7 @@ namespace InferenceEngine
 
         public bool insAll(string noun1, string noun2)
         {
-            if (!addAll(noun1, noun2))
+            if (!addToTable("all", noun1, noun2))
                 return false;
 
 
@@ -178,7 +178,7 @@ namespace InferenceEngine
             //Test: Inserting values to empty InfEng
             //Assert: True
             Console.WriteLine("Test 1: Adding Dog and Mammal");
-            if (!addAll("Dog", "Mammal"))
+            if (!addToTable("all", "Dog", "Mammal"))
                 Console.WriteLine("Test failed\n");
             else
                 Console.WriteLine("** Test Success\n");
@@ -186,7 +186,7 @@ namespace InferenceEngine
             //Test: non-unique noun1
             //Assert: True
             Console.WriteLine("Test 2: Adding Dog and Wet");
-            if (!addAll("Dog", "Wet"))
+            if (!addToTable("all", "Dog", "Wet"))
                 Console.WriteLine("Test failed\n");
             else
                 Console.WriteLine("** Test Success\n");
@@ -194,7 +194,7 @@ namespace InferenceEngine
             //Test: non-unique noun2
             //Assert: True
             Console.WriteLine("Test 3: Adding Cat and Mammal");
-            if (!addAll("Cat", "Mammal"))
+            if (!addToTable("all", "Cat", "Mammal"))
                 Console.WriteLine("Test failed\n");
             else
                 Console.WriteLine("** Test Success\n");
@@ -202,7 +202,7 @@ namespace InferenceEngine
             //Test: non-unique noun1 and noun2
             //Assert: False
             Console.WriteLine("Test 4: Adding Cat and Mammal");
-            if (addAll("Cat", "Mammal"))
+            if (addToTable("all", "Cat", "Mammal"))
                 Console.WriteLine("Test failed\n");
             else
                 Console.WriteLine("** Test Success\n");
@@ -221,7 +221,7 @@ namespace InferenceEngine
             //Test: Delete values from empty table
             //Assert: False
             Console.WriteLine("Test 1: Removing Dog and Mammal");
-            removeAll("Dog", "Mammal");
+            removeFromTable("all", "Dog", "Mammal");
             m_dbConnection.Open();
             string sql = String.Format("select * from rules_all where noun1 = \"Dog\" and noun2 = \"Mammal\"");
             SQLiteCommand command = new SQLiteCommand(sql, m_dbConnection);
@@ -241,8 +241,8 @@ namespace InferenceEngine
             //Test: Delete existing values from table
             //Assert: True
             Console.WriteLine("Test 2: Removing Dog and Mammal");
-            addAll("Dog", "Mammal");
-            removeAll("Dog", "Mammal");
+            addToTable("all", "Dog", "Mammal");
+            removeFromTable("all", "Dog", "Mammal");
 
             m_dbConnection.Open();
             sql = String.Format("select * from rules_all where noun1 = \"Dog\" and noun2 = \"Mammal\"");
@@ -263,9 +263,9 @@ namespace InferenceEngine
             //Test: Delete non-existing values from non-empty table
             //Assert: False
             Console.WriteLine("Test 3: Removing Alligator and Mammal");
-            addAll("Cat", "Mammal");
-            addAll("Dog", "Mammal");
-            removeAll("Alligator", "Mammal");
+            addToTable("all", "Cat", "Mammal");
+            addToTable("all", "Dog", "Mammal");
+            removeFromTable("all", "Alligator", "Mammal");
 
             m_dbConnection.Open();
             sql = String.Format("select * from rules_all where noun1 = \"Alligator\" and noun2 = \"Mammal\"");
