@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.IO;
 
 namespace InferenceEngine
 {
@@ -15,11 +14,11 @@ namespace InferenceEngine
             InfEng myEngine = new InfEng();
             myEngine = new InfEng("newCrazyPath.sqlite");
 
-            //Test the private addAll() function
+            //Unit Tests for the private functions
             //  -- Check console for results
-            myEngine.test_addAll();
+            myEngine.test_addToTable();
 
-            myEngine.test_removeAll();
+            myEngine.test_removeFromTable();
 
             myEngine.test_checkContradictions();
 

@@ -162,8 +162,10 @@ namespace InferenceEngine
 
 
         //WARNING: Calling any test_* functions will completely wipe the InfEng DB
-        public void test_addAll()
+        public void test_addToTable()
         {
+            Console.WriteLine("\n\n   Testing addToTable()   \n__________________________");
+
             // We need a clean DB for consistant results
             reset();
 
@@ -172,33 +174,33 @@ namespace InferenceEngine
             Console.WriteLine("Test 1: Adding Dog and Mammal");
             
             if (!addToTable("all", "Dog", "Mammal"))
-                Console.WriteLine("Test failed\n");
+                failure();
             else
-                Console.WriteLine("** Test Success\n");
+                success();
 
             //Test: non-unique noun1
             //Assert: True
             Console.WriteLine("Test 2: Adding Dog and Wet");
             if (!addToTable("all", "Dog", "Wet"))
-                Console.WriteLine("Test failed\n");
+                failure();
             else
-                Console.WriteLine("** Test Success\n");
+                success();
 
             //Test: non-unique noun2
             //Assert: True
             Console.WriteLine("Test 3: Adding Cat and Mammal");
             if (!addToTable("all", "Cat", "Mammal"))
-                Console.WriteLine("Test failed\n");
+                failure();
             else
-                Console.WriteLine("** Test Success\n");
+                success();
 
             //Test: non-unique noun1 and noun2
             //Assert: False
             Console.WriteLine("Test 4: Adding Cat and Mammal");
             if (addToTable("all", "Cat", "Mammal"))
-                Console.WriteLine("Test failed\n");
+                failure();
             else
-                Console.WriteLine("** Test Success\n");
+                success();
 
             return;
         }
@@ -206,8 +208,10 @@ namespace InferenceEngine
 
         //TODO: Desparately need to clean this up with some sort of a query function
         //Tests are performed by quering the tables for values that we expect to not be there
-        public void test_removeAll()
+        public void test_removeFromTable()
         {
+            Console.WriteLine("\n\n   Testing removeFromTable()   \n_______________________________");
+
             // We need a clean DB for consistant results
             reset();
 
@@ -225,7 +229,7 @@ namespace InferenceEngine
                 iterations++;
             }
             if (iterations == 0)
-                Console.WriteLine("** Test Success\n");
+                success();
             else
                 Console.WriteLine(string.Format("Test failed: {0} iterations\n", iterations));
             m_dbConnection.Close();
@@ -247,7 +251,7 @@ namespace InferenceEngine
                 iterations++;
             }
             if (iterations == 0)
-                Console.WriteLine("** Test Success\n");
+                success();
             else
                 Console.WriteLine(string.Format("Test failed: {0} iterations\n", iterations));
             m_dbConnection.Close();
@@ -270,7 +274,7 @@ namespace InferenceEngine
                 iterations++;
             }
             if (iterations == 0)
-                Console.WriteLine("** Test Success\n");
+                success();
             else
                 Console.WriteLine(string.Format("Test failed: {0} iterations\n", iterations));
             m_dbConnection.Close();
@@ -281,22 +285,24 @@ namespace InferenceEngine
             // We need a clean DB for consistant results
             reset();
 
+            Console.WriteLine("\n\n   Testing checkContradictions()   \n___________________________________");
+
             //Test: No contradictions in an empty DB
             //Assert: True
             Console.WriteLine("Test 1: Contradictions in an empty DB?");
             if (!checkContradictions("dog", "mammals"))
-                Console.WriteLine("Test failed\n");
+                failure();
             else
-                Console.WriteLine("** Test Success\n");
+                success();
 
             //Test: Contradiction in all table
             //Assert: False
             Console.WriteLine("Test 2: Contradiction in All table");
             addToTable("all", "dog", "mammals");
             if (checkContradictions("dog", "mammals"))
-                Console.WriteLine("Test failed\n");
+                failure();
             else
-                Console.WriteLine("** Test Success\n");
+                success();
             removeFromTable("all", "dog", "mammals");
 
             //Test: Contradiction in no table
@@ -304,9 +310,9 @@ namespace InferenceEngine
             Console.WriteLine("Test 3: Contradiction in No table");
             addToTable("no", "dog", "mammals");
             if (checkContradictions("dog", "mammals"))
-                Console.WriteLine("Test failed\n");
+                failure();
             else
-                Console.WriteLine("** Test Success\n");
+                success();
             removeFromTable("no", "dog", "mammals");
 
             //Test: Contradiction in some table
@@ -314,11 +320,25 @@ namespace InferenceEngine
             Console.WriteLine("Test 4: Contradiction in Some table");
             addToTable("some", "dog", "mammals");
             if (checkContradictions("dog", "mammals"))
-                Console.WriteLine("Test failed\n");
+                failure();
             else
-                Console.WriteLine("** Test Success\n");
+                success();
             removeFromTable("some", "dog", "mammals");
 
+        }
+
+        private void success()
+        {
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("** Test Success **\n");
+            Console.ForegroundColor = ConsoleColor.White;
+        }
+
+        private void failure()
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("Test failed\n");
+            Console.ForegroundColor = ConsoleColor.White;
         }
 
 
