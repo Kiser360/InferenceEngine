@@ -12,6 +12,8 @@ namespace InferenceEngine
     {
         private SQLiteConnection m_dbConnection;
         private string DB_filename;
+        private List<string> undo_chain;
+        private bool isUndoOpen;
 
         //CONSTRUCTOR: accepts an explicit filename for the DB, or uses a default value
         //RESULT:  The constructor will create the DB connection, then attempt to create 
@@ -19,6 +21,8 @@ namespace InferenceEngine
         public InfEng(string filename = "MyDatabase.sqlite")
         {
             DB_filename = filename;
+            undo_chain = new List<string>();
+            isUndoOpen = false;
 
             //Lets see if we need to create the DB
             if (!File.Exists(DB_filename))
@@ -95,54 +99,103 @@ namespace InferenceEngine
         }
 
 
-        //Returns false if a contradiction is found in any table
-        private bool checkContradictions(string noun1, string noun2)
+        //Returns 0 if a contradiction is found in table other than targetTable
+        //Returns 1 if a contradiction found in targetTable
+        //Returns 2 if no contradiction is found
+        private int checkContradictions(string targetTable, string noun1, string noun2)
         {
             //Attempt to add the values to all tables.  addToTable will return 
             //  false if the set can't be added due to a unique violation.
-            //  In which case there is a contradiction and we return false.
-
-            if (addToTable("all", noun1, noun2))
+            //  In which case there is a contradiction, then we need to check if
+            //  we are trying to add to the target table in which case its not really
+            //  a contradiction, just already known information
+            bool addToAllTable = addToTable("all", noun1, noun2);
+            if (addToAllTable)
                 removeFromTable("all", noun1, noun2);
-            else
-            {
-                Console.WriteLine("Contradiction found in All");
-                return false;
-            }
-
-            if (addToTable("no", noun1, noun2))
+            else if (!addToAllTable && targetTable == "all")
+                return 1;
+            else if (!addToAllTable)
+                return 0;
+            
+            bool addToNoTable = addToTable("no", noun1, noun2);
+            if (addToNoTable)
                 removeFromTable("no", noun1, noun2);
-            else
-            {
-                Console.WriteLine("Contradiction found in No");
-                return false;
-            }
+            else if (!addToNoTable && targetTable == "no")
+                return 1;
+            else if (!addToNoTable)
+                return 0;
 
-            if (addToTable("some", noun1, noun2))
+            bool addToSomeTable = addToTable("some", noun1, noun2);
+            if (addToSomeTable)
                 removeFromTable("some", noun1, noun2);
-            else
-            {
-                Console.WriteLine("Contradiction found in Some");
-                return false;
-            }
+            else if (!addToSomeTable && targetTable == "some")
+                return 1;
+            else if (!addToSomeTable)
+                return 0;
 
 
-            return true;
+            return 2;
         }
 
         public bool insertInTable(string table, string noun1, string noun2)
         {
-            if (!checkContradictions(noun1, noun2))
+            //This is used only on the first call of insertInTable, these variables insure that
+            //  recursively called insertInTable's don't damage the undoChain which is necessary
+            //  when a contradiction is found.
+            bool needToCloseUndo = false;
+            if (!isUndoOpen)
+            {
+                isUndoOpen = true;
+                needToCloseUndo = true;
+                undo_chain.Add(table);  //The first element of the chain will always be the targetTable
+            }
+
+            int contradictionType = checkContradictions(table, noun1, noun2);
+
+            
+            if (contradictionType == 0)       //True contradiction with another table
+            {
+                Console.WriteLine("Contradiction with another table");
+                if (needToCloseUndo)
+                {
+                    undo_chain.Clear();
+                    isUndoOpen = false;
+                }
                 return false;
-            addToTable(table, noun1, noun2);
+            }
+            else if (contradictionType == 1)  //Already known knowledge
+            {
+                Console.WriteLine("Already Known Information");
+            }
+            else if (contradictionType == 2)  //No contradictions found
+            {
+                addToTable(table, noun1, noun2);
+                undo_chain.Add(noun1);
+                undo_chain.Add(noun2);
+                Console.WriteLine("No contradictions: adding to undo chain");
+            }
+            
 
             if (!makeInferences(table, noun1, noun2))
             {
-                removeFromTable(table, noun1, noun2);
+                if(needToCloseUndo)      //if there is a contradiction anywhere recursively and this is the first instance of insertIntoTable
+                {
+                    revert();            //Run through the undoChain and revert all the changes made
+                    undo_chain.Clear();
+                    isUndoOpen = false;
+                }
                 return false;
             }
             else
+            {
+                if (needToCloseUndo)
+                {
+                    undo_chain.Clear();
+                    isUndoOpen = false;
+                }
                 return true;
+            }
+                
         }
 
         private bool makeInferences(string table, string noun1, string noun2)
@@ -170,7 +223,14 @@ namespace InferenceEngine
             }
             m_dbConnection.Close();
 
-            Console.WriteLine(other_nouns.Count);
+            for (int i = 0; i < other_nouns.Count; i++)
+            {
+                if(!insertInTable(table, noun1, other_nouns[i]))
+                {
+                    return false;
+                }
+            }
+
             return true;
         }
 
@@ -193,6 +253,11 @@ namespace InferenceEngine
 
             m_dbConnection.Close();
             return;
+        }
+
+        private void revert()
+        {
+
         }
 
 
@@ -317,15 +382,20 @@ namespace InferenceEngine
 
         public void test_checkContradictions()
         {
+            //Returns 0 if a contradiction is found in table other than targetTable
+            //Returns 1 if a contradiction found in targetTable
+            //Returns 2 if no contradiction is found
+
             // We need a clean DB for consistant results
             reset();
 
-            Console.WriteLine("\n\n   Testing checkContradictions()   \n___________________________________");
+            Console.WriteLine("\n\n   Testing checkContradictions()   " +
+                                "\n___________________________________");
 
             //Test: No contradictions in an empty DB
             //Assert: True
             Console.WriteLine("Test 1: Contradictions in an empty DB?");
-            if (!checkContradictions("dog", "mammals"))
+            if (checkContradictions("all", "dog", "mammals") != 2)
                 failure();
             else
                 success();
@@ -334,7 +404,7 @@ namespace InferenceEngine
             //Assert: False
             Console.WriteLine("Test 2: Contradiction in All table");
             addToTable("all", "dog", "mammals");
-            if (checkContradictions("dog", "mammals"))
+            if (checkContradictions("no","dog", "mammals") != 0)
                 failure();
             else
                 success();
@@ -344,7 +414,7 @@ namespace InferenceEngine
             //Assert: False
             Console.WriteLine("Test 3: Contradiction in No table");
             addToTable("no", "dog", "mammals");
-            if (checkContradictions("dog", "mammals"))
+            if (checkContradictions("all", "dog", "mammals") != 0)
                 failure();
             else
                 success();
@@ -354,7 +424,7 @@ namespace InferenceEngine
             //Assert: False
             Console.WriteLine("Test 4: Contradiction in Some table");
             addToTable("some", "dog", "mammals");
-            if (checkContradictions("dog", "mammals"))
+            if (checkContradictions("all", "dog", "mammals") != 0)
                 failure();
             else
                 success();
@@ -363,46 +433,41 @@ namespace InferenceEngine
             return;
         }
 
-        public void test_makeInferences()
+        public void test_insertIntoTable()
         {
             reset();
 
-            //Test: Make inference on some table
-            //Assert: True
-            Console.WriteLine("Test 1: Inference on Some table");
-            if (makeInferences("some", "dog", "mammal"))
+            //Test: insert to empty table
+            //Assert: true
+            Console.WriteLine("Test 1: Insert into empty DB");
+            if (insertInTable("all", "dog", "mammal"))
                 success();
             else
                 failure();
 
-            //Test: No inference made on non-existant values
-            //Assert: True
-            Console.WriteLine("Test 2: No inference made on non-existant values");
-            if (makeInferences("all", "dog", "mammal"))
+            //Test: insert contradictory info
+            //Assert: false
+            Console.WriteLine("Test 2: Contradictory information");
+            if (!insertInTable("no", "dog", "mammal"))
                 success();
             else
                 failure();
 
-            //Test: No inference made on existant values
-            //Assert: True
-            Console.WriteLine("Test 3: No inference made on existant values");
-            addToTable("all", "dog", "fuzzy");
-            if (makeInferences("all", "dog", "mammal"))
+            //Test: insert and make an inference
+            Console.WriteLine("Test 3: Insertion and making an inference");
+            if (insertInTable("all", "mammal", "furry"))
                 success();
             else
                 failure();
-            removeFromTable("all", "dog", "fuzzy");
 
-            //Test: 1 Inference to be made
-            Console.WriteLine("Test 4: 1 Inference to be made");
-            addToTable("all", "dog", "mammal");
-            addToTable("all", "mammal", "furry");
-            if (makeInferences("all", "dog", "mammal"))
+            //Test: insert and make recursive inference
+            Console.WriteLine("Test 4: recursive inference");
+            insertInTable("all", "cat", "mammal");
+            insertInTable("all", "furry", "has_hair");
+            if (!insertInTable("no", "dog", "has_hair"))
                 success();
             else
                 failure();
-            removeFromTable("all", "dog", "mammal");
-            removeFromTable("all", "mammal", "furry");
 
 
         }

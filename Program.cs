@@ -22,7 +22,7 @@ namespace InferenceEngine
 
             myEngine.test_checkContradictions();
 
-            myEngine.test_makeInferences();
+            myEngine.test_insertIntoTable();
 
 
             //I NEED TIME TO READ THE CONSOLE!!!!
