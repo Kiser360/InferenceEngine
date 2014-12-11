@@ -22,6 +22,8 @@ namespace InferenceEngine
 
             myEngine.test_checkContradictions();
 
+            myEngine.test_makeInferences();
+
 
             //I NEED TIME TO READ THE CONSOLE!!!!
             //    **This pauses execution**

@@ -130,12 +130,47 @@ namespace InferenceEngine
             return true;
         }
 
-        public bool insAll(string noun1, string noun2)
+        public bool insertInTable(string table, string noun1, string noun2)
         {
-            if (!addToTable("all", noun1, noun2))
+            if (!checkContradictions(noun1, noun2))
                 return false;
+            addToTable(table, noun1, noun2);
 
+            if (!makeInferences(table, noun1, noun2))
+            {
+                removeFromTable(table, noun1, noun2);
+                return false;
+            }
+            else
+                return true;
+        }
 
+        private bool makeInferences(string table, string noun1, string noun2)
+        {
+            //No Inferences can be made when adding to the some table
+            if (table == "some")
+            {
+                return true;
+            }
+
+            //Alright so here is the logic:
+            //  We are adding noun1 == noun2
+            //  If there exists a rule noun2 == other_noun
+            //  Then we can infer that noun1 == other_noun
+            m_dbConnection.Open();
+            string sql = String.Format("select noun2 from rules_{0} where noun1 = \"{1}\"", table, noun2);
+            SQLiteCommand command = new SQLiteCommand(sql, m_dbConnection);
+            SQLiteDataReader reader = command.ExecuteReader();
+            List<string> other_nouns = new List<string>();
+            while (reader.Read())
+            {
+                string other_noun = (string)reader["noun2"];
+                Console.WriteLine(string.Format("Infering that {0} {1} are {2}", table, noun1, other_noun));
+                other_nouns.Add(other_noun);
+            }
+            m_dbConnection.Close();
+
+            Console.WriteLine(other_nouns.Count);
             return true;
         }
 
@@ -324,6 +359,51 @@ namespace InferenceEngine
             else
                 success();
             removeFromTable("some", "dog", "mammals");
+
+            return;
+        }
+
+        public void test_makeInferences()
+        {
+            reset();
+
+            //Test: Make inference on some table
+            //Assert: True
+            Console.WriteLine("Test 1: Inference on Some table");
+            if (makeInferences("some", "dog", "mammal"))
+                success();
+            else
+                failure();
+
+            //Test: No inference made on non-existant values
+            //Assert: True
+            Console.WriteLine("Test 2: No inference made on non-existant values");
+            if (makeInferences("all", "dog", "mammal"))
+                success();
+            else
+                failure();
+
+            //Test: No inference made on existant values
+            //Assert: True
+            Console.WriteLine("Test 3: No inference made on existant values");
+            addToTable("all", "dog", "fuzzy");
+            if (makeInferences("all", "dog", "mammal"))
+                success();
+            else
+                failure();
+            removeFromTable("all", "dog", "fuzzy");
+
+            //Test: 1 Inference to be made
+            Console.WriteLine("Test 4: 1 Inference to be made");
+            addToTable("all", "dog", "mammal");
+            addToTable("all", "mammal", "furry");
+            if (makeInferences("all", "dog", "mammal"))
+                success();
+            else
+                failure();
+            removeFromTable("all", "dog", "mammal");
+            removeFromTable("all", "mammal", "furry");
+
 
         }
 
