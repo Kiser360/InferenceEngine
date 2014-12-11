@@ -525,6 +525,37 @@ namespace InferenceEngine
             else
                 failure();
 
+            //Test: revert changes from deep recursive X==Z inference Error
+            //Assert: True
+            Console.WriteLine("Test 7: deep recursive error X==Z");
+            reset();
+            insertInTable("no", "thing10", "thing11");
+            insertInTable("no", "thing20", "thing21");
+            insertInTable("no", "thing29", "thing30");
+            for (int i = 0; i < 30; i++)
+            {
+                insertInTable("all", "thing" + i, "thing" + (i + 1));
+            }
+            if (insertInTable("no", "thing1", "thing11"))  //I should be able to add this because this inference was never made in the all table
+                success();
+            else
+                failure();
+
+            //Test: revert changes from deep recursive Z==Y inference Error
+            //Assert: True
+            Console.WriteLine("Test 8: deep recursive error Z==Y");
+            reset();
+            insertInTable("no", "thing10", "thing11");
+            insertInTable("no", "thing20", "thing21");
+            insertInTable("no", "thing29", "thing30");
+            for (int i = 0; i < 30; i++)
+            {
+                insertInTable("all", "thing" + (i + 1), "thing" + (i - 1));
+            }
+            if (insertInTable("no", "thing1", "thing11"))  //I should be able to add this because this inference was never made in the all table
+                success();
+            else
+                failure();
 
 
         }

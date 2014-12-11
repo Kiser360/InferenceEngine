@@ -22,6 +22,7 @@ namespace InferenceEngine
 
             myEngine.test_checkContradictions();
 
+            //HOLY FMG BATMAN!!!: THIS TEST TAKES LIKE 10 MINUTES!
             myEngine.test_insertIntoTable();
 
 
