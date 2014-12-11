@@ -65,13 +65,13 @@ namespace InferenceEngine
             }
             catch (SQLiteException exeption)
             {
-                Console.WriteLine(exeption.Message);
+                //Console.WriteLine(exeption.Message);
                 result = false;
             }
 
             m_dbConnection.Close();
-            if (result)
-                Console.WriteLine(string.Format("Added {0} and {1} to {2}", noun1, noun2, table));
+            if (!result)
+                Console.WriteLine(string.Format("Can't Add {0} and {1} to {2}", noun1, noun2, table));
 
             return result;
         }
@@ -206,7 +206,7 @@ namespace InferenceEngine
                 return true;
             }
 
-            //Alright so here is the logic:
+            //Alright so here is the logic: X==Y Y==Z :: X==Z
             //  We are adding noun1 == noun2
             //  If there exists a rule noun2 == other_noun
             //  Then we can infer that noun1 == other_noun
@@ -230,6 +230,32 @@ namespace InferenceEngine
                     return false;
                 }
             }
+
+            //Also, MORE LOGIC: X==Y Z==X :: Z==Y
+            //  Adding noun1 == noun2
+            //  if there exists a rule other_noun == noun1
+            //  Then we can infer that other_noun == noun2
+            m_dbConnection.Open();
+            sql = String.Format("select noun1 from rules_{0} where noun2 = \"{1}\"", table, noun1);
+            command = new SQLiteCommand(sql, m_dbConnection);
+            reader = command.ExecuteReader();
+            other_nouns = new List<string>();
+            while (reader.Read())
+            {
+                string other_noun = (string)reader["noun1"];
+                Console.WriteLine(string.Format("Infering that {0} {1} are {2}", table, other_noun, noun2));
+                other_nouns.Add(other_noun);
+            }
+            m_dbConnection.Close();
+
+            for (int i = 0; i < other_nouns.Count; i++)
+            {
+                if (!insertInTable(table, other_nouns[i], noun2))
+                {
+                    return false;
+                }
+            }
+
 
             return true;
         }
@@ -257,7 +283,12 @@ namespace InferenceEngine
 
         private void revert()
         {
+            for (int i = 1; i < undo_chain.Count; i += 2 )
+            {
+                removeFromTable(undo_chain[0], undo_chain[i], undo_chain[i + 1]);
+            }
 
+            return;
         }
 
 
@@ -454,14 +485,26 @@ namespace InferenceEngine
                 failure();
 
             //Test: insert and make an inference
+            //Assert: true
             Console.WriteLine("Test 3: Insertion and making an inference");
             if (insertInTable("all", "mammal", "furry"))
                 success();
             else
                 failure();
 
-            //Test: insert and make recursive inference
-            Console.WriteLine("Test 4: recursive inference");
+            //Test: insert and make X==Y Z==X Z==Y inference
+            //Assert: False
+            Console.WriteLine("Test 4: Z==Y inference");
+            insertInTable("no", "orange", "apple");
+            insertInTable("no", "potatoe", "orange");
+            if (!insertInTable("all", "potatoe", "apple"))
+                success();
+            else
+                failure();
+
+            //Test: insert and make recursive X==Y Z==X Z==Y inference
+            //Assert: False
+            Console.WriteLine("Test 5: recursive inference Z==Y");
             insertInTable("all", "cat", "mammal");
             insertInTable("all", "furry", "has_hair");
             if (!insertInTable("no", "dog", "has_hair"))
@@ -469,20 +512,34 @@ namespace InferenceEngine
             else
                 failure();
 
+            //Test: revert changes from a shallow recursive inference Error
+            //Assert: False
+            Console.WriteLine("Test 6: shallow recursive error");
+            reset();
+            insertInTable("all", "thing1", "thing2");
+            insertInTable("all", "thing2", "thing3");
+            insertInTable("all", "thing3", "thing4");
+            insertInTable("some", "thing4", "thing5");
+            if (!insertInTable("all", "thing4", "thing5"))
+                success();
+            else
+                failure();
+
+
 
         }
 
         private void success()
         {
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("** Test Success **\n");
+            Console.WriteLine("** Success **\n");
             Console.ForegroundColor = ConsoleColor.White;
         }
 
         private void failure()
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine("Test failed\n");
+            Console.WriteLine("** Failure **\n");
             Console.ForegroundColor = ConsoleColor.White;
         }
 
