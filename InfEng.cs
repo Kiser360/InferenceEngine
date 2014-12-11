@@ -160,6 +160,7 @@ namespace InferenceEngine
                 {
                     undo_chain.Clear();
                     isUndoOpen = false;
+                    failure();
                 }
                 return false;
             }
@@ -172,7 +173,6 @@ namespace InferenceEngine
                 addToTable(table, noun1, noun2);
                 undo_chain.Add(noun1);
                 undo_chain.Add(noun2);
-                Console.WriteLine("No contradictions: adding to undo chain");
             }
             
 
@@ -184,6 +184,7 @@ namespace InferenceEngine
                     undo_chain.Clear();
                     isUndoOpen = false;
                 }
+                failure();
                 return false;
             }
             else
@@ -192,6 +193,7 @@ namespace InferenceEngine
                 {
                     undo_chain.Clear();
                     isUndoOpen = false;
+                    success();
                 }
                 return true;
             }
@@ -281,6 +283,47 @@ namespace InferenceEngine
             return;
         }
 
+        //Returns all known information about a given noun
+        //Results returned in the form of a string with : delimeters
+        //  - First entry is the table, second is noun1, third is noun2
+        public List<string> query(string noun)
+        {
+            List<string> results = new List<string>();
+
+            m_dbConnection.Open();
+
+            //Whats in the All table?????
+            string sql = string.Format("SELECT * FROM rules_all WHERE noun1 = \"{0}\"", noun);
+            SQLiteCommand command = new SQLiteCommand(sql, m_dbConnection);
+            SQLiteDataReader reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                results.Add(String.Format("{0}:{1}:{2}","all", reader["noun1"], reader["noun2"]));
+            }
+
+            //Whats in the No table?????
+            sql = string.Format("SELECT * FROM rules_no WHERE noun1 = \"{0}\"", noun);
+            command = new SQLiteCommand(sql, m_dbConnection);
+            reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                results.Add(String.Format("{0}:{1}:{2}", "no", reader["noun1"], reader["noun2"]));
+            }
+
+            //Whats in the Some table??????
+            sql = string.Format("SELECT * FROM rules_some WHERE noun1 = \"{0}\"", noun);
+            command = new SQLiteCommand(sql, m_dbConnection);
+            reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                results.Add(String.Format("{0}:{1}:{2}", "some", reader["noun1"], reader["noun2"]));
+            }
+
+            m_dbConnection.Close();
+
+            return results;
+        }
+
         private void revert()
         {
             for (int i = 1; i < undo_chain.Count; i += 2 )
@@ -290,6 +333,7 @@ namespace InferenceEngine
 
             return;
         }
+
 
 
         //WARNING: Calling any test_* functions will completely wipe the InfEng DB
