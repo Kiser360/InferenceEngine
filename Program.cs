@@ -28,30 +28,42 @@ namespace InferenceEngine
             bool endRun = false;
             string input;
             InfEng REPL_Engine = new InfEng("REPL_Engine.db");
+            REPL_Engine.reset();
             while(!endRun)
             {
-                Console.Write(">>");
-                input = Console.ReadLine().ToUpper();
+                Console.Write("\n>>");
+                input = Console.ReadLine().ToUpper();  //Make everything uppercase for consistancy
+
+                //User wants to exit the program
                 if (input == "EXIT")
                 {
                     endRun = true;
                 }
-                else if (input[0] == '?')
-                {
-                    Console.WriteLine("Hey Thats a QUERY!");
-                    List<string> Q_Result = REPL_Engine.query(input.Substring(1));
-                    for (int i = 0; i < Q_Result.Count; i++)
+                //User wants to query the DB
+                else if (input.Length > 0)
+                { 
+                    if (input[0] == '?')
                     {
-                        string[] splits = Q_Result[i].Split(':');
-                        Console.WriteLine("-- " + String.Format("{0} {1} are {2}", splits[0], splits[1], splits[2]));
+                        List<string> Q_Result = REPL_Engine.query(input.Substring(1));
+                        for (int i = 0; i < Q_Result.Count; i++)
+                        {
+                            string[] splits = Q_Result[i].Split(':');
+                            Console.WriteLine("-- " + String.Format("{0} {1} are {2}", splits[0].ToUpper(), splits[1], splits[2]));
+                        }
+                    }
+                    //User wants to add to the DB
+                    else if (input.Contains("are".ToUpper()))
+                    {
+                        if (!REPL_Engine.parse(input))
+                            Console.WriteLine("Error with parsing");
                     }
                 }
+                //User needs HALP!!
                 else
                 {
-                    Console.WriteLine("Gonna need to parse this badboy");
+                    Console.WriteLine("Help a Bro out!");
                 }
             }
-
         }
     }
 }

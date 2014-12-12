@@ -109,26 +109,26 @@ namespace InferenceEngine
             //  In which case there is a contradiction, then we need to check if
             //  we are trying to add to the target table in which case its not really
             //  a contradiction, just already known information
-            bool addToAllTable = addToTable("all", noun1, noun2);
+            bool addToAllTable = addToTable("ALL", noun1, noun2);
             if (addToAllTable)
-                removeFromTable("all", noun1, noun2);
-            else if (!addToAllTable && targetTable == "all")
+                removeFromTable("ALL", noun1, noun2);
+            else if (!addToAllTable && targetTable == "ALL")
                 return 1;
             else if (!addToAllTable)
                 return 0;
             
-            bool addToNoTable = addToTable("no", noun1, noun2);
+            bool addToNoTable = addToTable("NO", noun1, noun2);
             if (addToNoTable)
-                removeFromTable("no", noun1, noun2);
-            else if (!addToNoTable && targetTable == "no")
+                removeFromTable("NO", noun1, noun2);
+            else if (!addToNoTable && targetTable == "NO")
                 return 1;
             else if (!addToNoTable)
                 return 0;
 
-            bool addToSomeTable = addToTable("some", noun1, noun2);
+            bool addToSomeTable = addToTable("SOME", noun1, noun2);
             if (addToSomeTable)
-                removeFromTable("some", noun1, noun2);
-            else if (!addToSomeTable && targetTable == "some")
+                removeFromTable("SOME", noun1, noun2);
+            else if (!addToSomeTable && targetTable == "SOME")
                 return 1;
             else if (!addToSomeTable)
                 return 0;
@@ -322,6 +322,26 @@ namespace InferenceEngine
             m_dbConnection.Close();
 
             return results;
+        }
+
+        public bool parse(string input)
+        {
+            string[] nouns = input.Split(' ');
+            if (nouns.Length != 4)
+            {
+                Console.WriteLine("Syntax Error: Too Many Words");
+                return false;
+            }
+            if (nouns[0] != "ALL" && nouns[0] != "NO" && nouns[0] != "SOME")
+            {
+                Console.WriteLine("Syntax Error: Doesn't contain Keyword");
+                return false;
+            }
+            else
+                insertInTable(nouns[0], nouns[1], nouns[3]);
+
+            return true;
+
         }
 
         private void revert()
