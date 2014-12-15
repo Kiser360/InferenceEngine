@@ -203,20 +203,36 @@ namespace InferenceEngine
         private bool makeInferences(string table, string noun1, string noun2)
         {
             //No Inferences can be made when adding to the some table
-            if (table == "some")
+            if (table == "SOME")
             {
                 return true;
             }
+
+            //Equvalence Case: X==Y Y==X
+            //  If we don't account for this the other checks will result in permanent loop
+            m_dbConnection.Open();
+            string sql = String.Format("select noun2 from rules_{0} where noun1 = \"{1}\" and noun2 = \"{2}\"", table, noun2, noun1);
+            SQLiteCommand command = new SQLiteCommand(sql, m_dbConnection);
+            SQLiteDataReader reader = command.ExecuteReader();
+            List<string> other_nouns = new List<string>();
+            if (reader.Read())
+            {
+                m_dbConnection.Close();
+                removeFromTable(table, noun1, noun2);
+                Console.WriteLine("Error: Already known, {0} {1} are {2}",table, noun2, noun1);
+                return false;
+            }
+            m_dbConnection.Close();
 
             //Alright so here is the logic: X==Y Y==Z :: X==Z
             //  We are adding noun1 == noun2
             //  If there exists a rule noun2 == other_noun
             //  Then we can infer that noun1 == other_noun
             m_dbConnection.Open();
-            string sql = String.Format("select noun2 from rules_{0} where noun1 = \"{1}\"", table, noun2);
-            SQLiteCommand command = new SQLiteCommand(sql, m_dbConnection);
-            SQLiteDataReader reader = command.ExecuteReader();
-            List<string> other_nouns = new List<string>();
+            sql = String.Format("select noun2 from rules_{0} where noun1 = \"{1}\"", table, noun2);
+            command = new SQLiteCommand(sql, m_dbConnection);
+            reader = command.ExecuteReader();
+            other_nouns = new List<string>();
             while (reader.Read())
             {
                 string other_noun = (string)reader["noun2"];
@@ -294,29 +310,41 @@ namespace InferenceEngine
 
             //Whats in the All table?????
             string sql = string.Format("SELECT * FROM rules_all WHERE noun1 = \"{0}\"", noun);
+              //Get all info from table if noun is empty
+            if (noun.Length < 1)
+                sql = string.Format("SELECT * FROM rules_all ORDER BY noun1");
+
             SQLiteCommand command = new SQLiteCommand(sql, m_dbConnection);
             SQLiteDataReader reader = command.ExecuteReader();
             while (reader.Read())
             {
-                results.Add(String.Format("{0}:{1}:{2}","all", reader["noun1"], reader["noun2"]));
+                results.Add(String.Format("{0}:{1}:{2}","ALL", reader["noun1"], reader["noun2"]));
             }
 
             //Whats in the No table?????
             sql = string.Format("SELECT * FROM rules_no WHERE noun1 = \"{0}\"", noun);
+              //All info again
+            if (noun.Length < 1)
+                sql = string.Format("SELECT * FROM rules_no ORDER BY noun1");
+
             command = new SQLiteCommand(sql, m_dbConnection);
             reader = command.ExecuteReader();
             while (reader.Read())
             {
-                results.Add(String.Format("{0}:{1}:{2}", "no", reader["noun1"], reader["noun2"]));
+                results.Add(String.Format("{0}:{1}:{2}", "NO", reader["noun1"], reader["noun2"]));
             }
 
             //Whats in the Some table??????
             sql = string.Format("SELECT * FROM rules_some WHERE noun1 = \"{0}\"", noun);
+              //all info again
+            if (noun.Length < 1)
+                sql = string.Format("SELECT * FROM rules_some ORDER BY noun1");
+
             command = new SQLiteCommand(sql, m_dbConnection);
             reader = command.ExecuteReader();
             while (reader.Read())
             {
-                results.Add(String.Format("{0}:{1}:{2}", "some", reader["noun1"], reader["noun2"]));
+                results.Add(String.Format("{0}:{1}:{2}", "SOME", reader["noun1"], reader["noun2"]));
             }
 
             m_dbConnection.Close();
@@ -368,7 +396,7 @@ namespace InferenceEngine
             //Assert: True
             Console.WriteLine("Test 1: Adding Dog and Mammal");
             
-            if (!addToTable("all", "Dog", "Mammal"))
+            if (!addToTable("ALL", "DOG", "Mammal"))
                 failure();
             else
                 success();
@@ -376,7 +404,7 @@ namespace InferenceEngine
             //Test: non-unique noun1
             //Assert: True
             Console.WriteLine("Test 2: Adding Dog and Wet");
-            if (!addToTable("all", "Dog", "Wet"))
+            if (!addToTable("ALL", "DOG", "Wet"))
                 failure();
             else
                 success();
@@ -384,7 +412,7 @@ namespace InferenceEngine
             //Test: non-unique noun2
             //Assert: True
             Console.WriteLine("Test 3: Adding Cat and Mammal");
-            if (!addToTable("all", "Cat", "Mammal"))
+            if (!addToTable("ALL", "Cat", "Mammal"))
                 failure();
             else
                 success();
@@ -392,7 +420,7 @@ namespace InferenceEngine
             //Test: non-unique noun1 and noun2
             //Assert: False
             Console.WriteLine("Test 4: Adding Cat and Mammal");
-            if (addToTable("all", "Cat", "Mammal"))
+            if (addToTable("ALL", "Cat", "Mammal"))
                 failure();
             else
                 success();
@@ -413,7 +441,7 @@ namespace InferenceEngine
             //Test: Delete values from empty table
             //Assert: False
             Console.WriteLine("Test 1: Removing Dog and Mammal");
-            removeFromTable("all", "Dog", "Mammal");
+            removeFromTable("ALL", "DOG", "Mammal");
             m_dbConnection.Open();
             string sql = String.Format("select * from rules_all where noun1 = \"Dog\" and noun2 = \"Mammal\"");
             SQLiteCommand command = new SQLiteCommand(sql, m_dbConnection);
@@ -433,8 +461,8 @@ namespace InferenceEngine
             //Test: Delete existing values from table
             //Assert: True
             Console.WriteLine("Test 2: Removing Dog and Mammal");
-            addToTable("all", "Dog", "Mammal");
-            removeFromTable("all", "Dog", "Mammal");
+            addToTable("ALL", "DOG", "Mammal");
+            removeFromTable("ALL", "DOG", "Mammal");
 
             m_dbConnection.Open();
             sql = String.Format("select * from rules_all where noun1 = \"Dog\" and noun2 = \"Mammal\"");
@@ -455,9 +483,9 @@ namespace InferenceEngine
             //Test: Delete non-existing values from non-empty table
             //Assert: False
             Console.WriteLine("Test 3: Removing Alligator and Mammal");
-            addToTable("all", "Cat", "Mammal");
-            addToTable("all", "Dog", "Mammal");
-            removeFromTable("all", "Alligator", "Mammal");
+            addToTable("ALL", "Cat", "Mammal");
+            addToTable("ALL", "DOG", "Mammal");
+            removeFromTable("ALL", "Alligator", "Mammal");
 
             m_dbConnection.Open();
             sql = String.Format("select * from rules_all where noun1 = \"Alligator\" and noun2 = \"Mammal\"");
@@ -490,7 +518,7 @@ namespace InferenceEngine
             //Test: No contradictions in an empty DB
             //Assert: True
             Console.WriteLine("Test 1: Contradictions in an empty DB?");
-            if (checkContradictions("all", "dog", "mammals") != 2)
+            if (checkContradictions("ALL", "DOG", "mammals") != 2)
                 failure();
             else
                 success();
@@ -498,32 +526,32 @@ namespace InferenceEngine
             //Test: Contradiction in all table
             //Assert: False
             Console.WriteLine("Test 2: Contradiction in All table");
-            addToTable("all", "dog", "mammals");
-            if (checkContradictions("no","dog", "mammals") != 0)
+            addToTable("ALL", "DOG", "mammals");
+            if (checkContradictions("NO","DOG", "mammals") != 0)
                 failure();
             else
                 success();
-            removeFromTable("all", "dog", "mammals");
+            removeFromTable("ALL", "DOG", "mammals");
 
             //Test: Contradiction in no table
             //Assert: False
             Console.WriteLine("Test 3: Contradiction in No table");
-            addToTable("no", "dog", "mammals");
-            if (checkContradictions("all", "dog", "mammals") != 0)
+            addToTable("NO", "DOG", "mammals");
+            if (checkContradictions("ALL", "DOG", "mammals") != 0)
                 failure();
             else
                 success();
-            removeFromTable("no", "dog", "mammals");
+            removeFromTable("NO", "DOG", "mammals");
 
             //Test: Contradiction in some table
             //Assert: False
             Console.WriteLine("Test 4: Contradiction in Some table");
-            addToTable("some", "dog", "mammals");
-            if (checkContradictions("all", "dog", "mammals") != 0)
+            addToTable("SOME", "DOG", "mammals");
+            if (checkContradictions("ALL", "DOG", "mammals") != 0)
                 failure();
             else
                 success();
-            removeFromTable("some", "dog", "mammals");
+            removeFromTable("SOME", "DOG", "mammals");
 
             return;
         }
@@ -535,7 +563,7 @@ namespace InferenceEngine
             //Test: insert to empty table
             //Assert: true
             Console.WriteLine("Test 1: Insert into empty DB");
-            if (insertInTable("all", "dog", "mammal"))
+            if (insertInTable("ALL", "DOG", "mammal"))
                 success();
             else
                 failure();
@@ -543,7 +571,7 @@ namespace InferenceEngine
             //Test: insert contradictory info
             //Assert: false
             Console.WriteLine("Test 2: Contradictory information");
-            if (!insertInTable("no", "dog", "mammal"))
+            if (!insertInTable("NO", "DOG", "mammal"))
                 success();
             else
                 failure();
@@ -551,7 +579,7 @@ namespace InferenceEngine
             //Test: insert and make an inference
             //Assert: true
             Console.WriteLine("Test 3: Insertion and making an inference");
-            if (insertInTable("all", "mammal", "furry"))
+            if (insertInTable("ALL", "mammal", "furry"))
                 success();
             else
                 failure();
@@ -559,9 +587,9 @@ namespace InferenceEngine
             //Test: insert and make X==Y Z==X Z==Y inference
             //Assert: False
             Console.WriteLine("Test 4: Z==Y inference");
-            insertInTable("no", "orange", "apple");
-            insertInTable("no", "potatoe", "orange");
-            if (!insertInTable("all", "potatoe", "apple"))
+            insertInTable("NO", "orange", "apple");
+            insertInTable("NO", "potatoe", "orange");
+            if (!insertInTable("ALL", "potatoe", "apple"))
                 success();
             else
                 failure();
@@ -569,9 +597,9 @@ namespace InferenceEngine
             //Test: insert and make recursive X==Y Z==X Z==Y inference
             //Assert: False
             Console.WriteLine("Test 5: recursive inference Z==Y");
-            insertInTable("all", "cat", "mammal");
-            insertInTable("all", "furry", "has_hair");
-            if (!insertInTable("no", "dog", "has_hair"))
+            insertInTable("ALL", "cat", "mammal");
+            insertInTable("ALL", "furry", "has_hair");
+            if (!insertInTable("NO", "DOG", "has_hair"))
                 success();
             else
                 failure();
@@ -580,11 +608,11 @@ namespace InferenceEngine
             //Assert: False
             Console.WriteLine("Test 6: shallow recursive error");
             reset();
-            insertInTable("all", "thing1", "thing2");
-            insertInTable("all", "thing2", "thing3");
-            insertInTable("all", "thing3", "thing4");
-            insertInTable("some", "thing4", "thing5");
-            if (!insertInTable("all", "thing4", "thing5"))
+            insertInTable("ALL", "thing1", "thing2");
+            insertInTable("ALL", "thing2", "thing3");
+            insertInTable("ALL", "thing3", "thing4");
+            insertInTable("SOME", "thing4", "thing5");
+            if (!insertInTable("ALL", "thing4", "thing5"))
                 success();
             else
                 failure();
@@ -593,14 +621,14 @@ namespace InferenceEngine
             //Assert: True
             Console.WriteLine("Test 7: deep recursive error X==Z");
             reset();
-            insertInTable("no", "thing10", "thing11");
-            insertInTable("no", "thing20", "thing21");
-            insertInTable("no", "thing29", "thing30");
+            insertInTable("NO", "thing10", "thing11");
+            insertInTable("NO", "thing20", "thing21");
+            insertInTable("NO", "thing29", "thing30");
             for (int i = 0; i < 30; i++)
             {
-                insertInTable("all", "thing" + i, "thing" + (i + 1));
+                insertInTable("ALL", "thing" + i, "thing" + (i + 1));
             }
-            if (insertInTable("no", "thing1", "thing11"))  //I should be able to add this because this inference was never made in the all table
+            if (insertInTable("NO", "thing1", "thing11"))  //I should be able to add this because this inference was never made in the all table
                 success();
             else
                 failure();
@@ -609,14 +637,14 @@ namespace InferenceEngine
             //Assert: True
             Console.WriteLine("Test 8: deep recursive error Z==Y");
             reset();
-            insertInTable("no", "thing10", "thing11");
-            insertInTable("no", "thing20", "thing21");
-            insertInTable("no", "thing29", "thing30");
+            insertInTable("NO", "thing10", "thing11");
+            insertInTable("NO", "thing20", "thing21");
+            insertInTable("NO", "thing29", "thing30");
             for (int i = 0; i < 30; i++)
             {
-                insertInTable("all", "thing" + (i + 1), "thing" + (i - 1));
+                insertInTable("ALL", "thing" + (i + 1), "thing" + (i - 1));
             }
-            if (insertInTable("no", "thing1", "thing11"))  //I should be able to add this because this inference was never made in the all table
+            if (insertInTable("NO", "thing1", "thing11"))  //I should be able to add this because this inference was never made in the all table
                 success();
             else
                 failure();
