@@ -296,6 +296,7 @@ namespace InferenceEngine
             
 
             m_dbConnection.Close();
+            Console.WriteLine("Database is now empty");
             return;
         }
 

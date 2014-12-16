@@ -10,15 +10,21 @@ namespace InferenceEngine
     {
         static void Main(string[] args)
         {
-            /*Un Comment this to run unit Tests
+            /*
+            //Un Comment this to run unit Tests
             //  -- Check console for results
-            myEngine = new InfEng("newCrazyPath.sqlite");
+            //NOTE! I reused the success and fail messages to display insertion results,
+            //     Therefore just because you see a fail message doesnt mean the test failed!
+            //     You have to look at the last success/fail message before beginning the next test,
+            //     That message is the true result of the test
+            InfEng myEngine = new InfEng("UnitTest.sqlite");
             myEngine.test_addToTable();
             myEngine.test_removeFromTable();
             myEngine.test_checkContradictions();
             //HOLY FMG BATMAN!!!: THIS TEST TAKES LIKE 20 MINUTES!
             myEngine.test_insertIntoTable();
-             * */
+            */
+            
 
             bool endRun = false;
             string input;
@@ -37,6 +43,8 @@ namespace InferenceEngine
             InfEng REPL_Engine = new InfEng(dbPath);
             
             Console.WriteLine("\n\nPlease input your commands at the prompt. Press enter with no command for help.");
+
+            // Begin the loop, Read-Evaluate-Print
             while(!endRun)
             {
                 Console.Write("\n>>");
@@ -48,42 +56,46 @@ namespace InferenceEngine
                     //So the loop will exit and end the program
                     endRun = true;
                 }
+
                 //User wants to test the program
                 else if (input == "TEST")
                 {
-                    Console.WriteLine("HEY!! Lets test some stuffs...  Hope nothing breaks");
+                    Console.WriteLine("HEY!! Lets test some stuffs...  Hope nothing breaks\n\n");
+                    testing(REPL_Engine);
                 }
+
                 //User wants to reset the DB
                 else if (input == "RESET")
                 {
                     REPL_Engine.reset();
-                    Console.WriteLine("Database is now empty");
+                    
                 }
-                //User wants to query the DB
+
+                //User wants to interact with DB
                 else if (input.Length > 0)
                 {
+                    //User wants to query the DB
                     if (input[0] == '?')
                     {
                         //Send the query to the DB
-                        List<string> Q_Result = REPL_Engine.query(input.Substring(1));
+                        outQueryResults(REPL_Engine.query(input.Substring(1)));
 
-                        //Format and output all results
-                        for (int i = 0; i < Q_Result.Count; i++)
-                        {
-                            string[] splits = Q_Result[i].Split(':');
-                            Console.WriteLine("-- " + String.Format("{0} {1} are {2}", splits[0].ToUpper(), splits[1], splits[2]));
-                        }
+                        
                     }
+
                     //User wants to add to the DB
                     else if (input.Contains("ARE"))
                     {
+                        //DB does the hardwork for us
                         if (!REPL_Engine.parse(input))
                             Console.WriteLine("Error with parsing");
                     }
+                    //User messed up, lets help a bro out
                     else
                         Console.WriteLine("Try using this format: [ all | no | some ] <noun1> are <noun2>");
                 }
-                //User needs HALP!!
+               
+                //User needs serious HALP!!
                 else
                 {
                     Console.Clear();
@@ -102,6 +114,104 @@ namespace InferenceEngine
                                       "\n\n  ?<noun>      -  Will display all information about the noun" +
                                         "\n  ?            -  Will display all information about all nouns");
                 }
+            }
+        }
+        public static void testing(InfEng engine)
+        {
+            Console.Clear();
+            Console.WriteLine("EXIT  - Gonna have to let you test this one for yourself" +
+                            "\nTEST  - Well I'm running aren't I?" +
+                            "\nRESET - Message that the DB has been cleared and query should return nothing\n");
+            Console.WriteLine("___________________________________________________");
+            engine.reset();
+            engine.query("");
+            Console.Write("\nPress Enter to continue...");
+            Console.ReadLine();
+
+            //Insert an assertion
+            Console.Clear();
+            Console.WriteLine("\nInserting an Assertion - Expect Success");
+            Console.WriteLine("Simple Assertion: ALL DOGS ARE MAMMALS");
+            Console.WriteLine("___________________________________________________");
+            engine.parse("ALL DOGS ARE MAMMALS");
+            outQueryResults(engine.query("DOGS"));
+            Console.Write("\nPress Enter to continue...");
+            Console.ReadLine();
+
+            //Insert Contradicting assertion
+            Console.Clear();
+            Console.WriteLine("\nInsert a Contradiction - Expect Fail");
+            Console.WriteLine("Create contradiction: NO DOGS ARE MAMMALS");
+            Console.WriteLine("Verify with a query on DOGS and expect not to see NO DOGS ARE MAMMALS");
+            Console.WriteLine("___________________________________________________");
+            engine.parse("NO DOGS ARE MAMMALS");
+            outQueryResults(engine.query("DOGS"));
+            Console.Write("\nPress Enter to continue...");
+            Console.ReadLine();
+
+            //Insert loop assertion
+            Console.Clear();
+            Console.WriteLine("\nInsertion loop-creating Assertion - Expect Fail");
+            Console.WriteLine("This will test infinite loop creation by attempting to asert:");
+            Console.WriteLine("ALL MAMMALS ARE DOGS");
+            Console.WriteLine("___________________________________________________");
+            engine.parse("ALL MAMMALS ARE DOGS");
+            outQueryResults(engine.query("DOGS"));
+            Console.Write("\nPress Enter to continue...");
+            Console.ReadLine();
+
+            //X==Y Y==Z :: X==Z Inference
+            Console.Clear();
+            Console.WriteLine("\nX==Y Y==Z :: X==Z - Expect Success");
+            Console.WriteLine("Adding: ALL MAMMALS ARE HAS_FUR");
+            Console.WriteLine("This should allow the db to infer that ALL DOGS ARE HAS_FUR");
+            Console.WriteLine("___________________________________________________");
+            engine.parse("ALL MAMMALS ARE HAS_FUR");
+            outQueryResults(engine.query("DOGS"));
+            Console.Write("\nPress Enter to continue...");
+            Console.ReadLine();
+
+            //Recursive X==Y Y==Z :: X==Z Inference and table contradiction
+            Console.Clear();
+            Console.WriteLine("\nX==Y Y==Z :: X==Z - Expect Success");
+            Console.WriteLine("This will test recursive entries and contradictions across tables.");
+            Console.WriteLine("- First we add: SOME CATS ARE HAS_FUR");
+            Console.WriteLine("- Then we add: ALL CATS ARE MAMMALS");
+            Console.WriteLine("We expect the DB to reject the second entry because it will infer" +
+                            "\nALL CATS ARE HAS_FUR which contradicts the first entry." +
+                            "\nVerify with a query on cats and expect ALL CATS ARE MAMMALS to NOT be there.");
+            Console.WriteLine("___________________________________________________");
+            engine.parse("SOME CATS ARE HAS_FUR");
+            engine.parse("ALL CATS ARE MAMMALS");
+            outQueryResults(engine.query("CATS"));
+            Console.Write("\nPress Enter to continue...");
+            Console.ReadLine();
+
+            //X==Y Z==X :: Z==Y Inference
+            Console.Clear();
+            Console.WriteLine("\nX==Y Z==Y :: Z==Y - Expect Success");
+            Console.WriteLine("Adding: ALL CATS ARE FIERCE");
+            Console.WriteLine("Adding: ALL LIONS ARE CATS");
+            Console.WriteLine("We expect the DB to accept both entries, it should infer");
+            Console.WriteLine("that ALL LIONS ARE FIERCE, output LIONS to verify");
+            engine.parse("ALL CATS ARE FIERCE");
+            engine.parse("ALL LIONS ARE CATS");
+            outQueryResults(engine.query("LIONS"));
+            Console.Write("\nPress Enter to continue...");
+            Console.ReadLine();
+
+
+
+
+            return;
+        }
+        public static void outQueryResults(List<string> results)
+        {
+            //Format and output all results
+            for (int i = 0; i < results.Count; i++)
+            {
+                string[] splits = results[i].Split(':');
+                Console.WriteLine("-- " + String.Format("{0} {1} are {2}", splits[0].ToUpper(), splits[1], splits[2]));
             }
         }
     }
