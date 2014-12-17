@@ -386,7 +386,7 @@ namespace InferenceEngine
 
         public bool parse(string input)
         {
-            string[] nouns = input.Split(' ');
+            string[] nouns = input.ToUpper().Split(' ');
             if (nouns.Length != 4)
             {
                 Console.WriteLine("Syntax Error: Too Many Words");

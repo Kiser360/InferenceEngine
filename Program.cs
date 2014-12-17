@@ -106,11 +106,11 @@ namespace InferenceEngine
                                         "\n  TEST         -  Will run tests to prove functionality" +
                                         "\n  RESET        -  Will reset the Database" +
 
-                                      "\n\nAdding to the DB" +
+                                      "\n\n  Adding to the DB" +
                                       "\n\n  [ all | some | no ] <noun1> are <noun2>" +
                                         "\n               -  Will add the assertion to the Database" +
 
-                                      "\n\nQuery the DB" +
+                                      "\n\n  Query the DB" +
                                       "\n\n  ?<noun>      -  Will display all information about the noun" +
                                         "\n  ?            -  Will display all information about all nouns");
                 }
@@ -120,9 +120,10 @@ namespace InferenceEngine
         public static void testing(InfEng engine)
         {
             Console.Clear();
-            Console.WriteLine("EXIT  - Gonna have to let you test this one for yourself" +
-                            "\nTEST  - Well I'm running aren't I?" +
-                            "\nRESET - Message that the DB has been cleared and query should return nothing\n");
+            Console.WriteLine("\n\nEXIT  - Gonna have to let you test this one for yourself" +
+                            "\nTEST  - I know this works... I'm running right now..." +
+                            "\n\nRESET - This command will display a message that" +
+                            "\nthe DB has been cleared and query should return nothing\n");
             Console.WriteLine("___________________________________________________");
             engine.reset();
             engine.query("");
@@ -216,13 +217,67 @@ namespace InferenceEngine
 
 
             //Calarent Syllogism
+            //Calarent X!=Y Z==X :: Z!=Y Inference
+            Console.Clear();
+            Console.WriteLine("\nCalarent: X!=Y Z==X :: Z!=Y - Expect Success");
+            Console.WriteLine("     - no dogs are cats");
+            Console.WriteLine("     - all wolves are dogs");
+            Console.WriteLine("Infer: no wolves are cats");
+            Console.WriteLine("___________________________________________________");
+            engine.parse("NO DOGS ARE CATS");
+            engine.parse("ALL WOLVES ARE DOGS");
+            outQueryResults(engine.query(""));
+            engine.reset();
+            Console.Write("\nPress Enter to continue...");
+            Console.ReadLine();
 
             //Calarent Syllogism from an inference (recursive)
+            Console.Clear();
+            Console.WriteLine("\nCalarent from an inference (recursive) - Expect Success");
+            Console.WriteLine("      - no X are Y");
+            Console.WriteLine("      - all A are X");
+            Console.WriteLine("      - all C are A");
+            Console.WriteLine("      - all Z are C");
+            Console.WriteLine("Result: 10 DB entries from 6 inferences");
+            Console.WriteLine("___________________________________________________");
+            engine.parse("NO X ARE Y");
+            engine.parse("ALL A ARE X");
+            engine.parse("ALL C ARE A");
+            engine.parse("ALL Z ARE C");
+            outQueryResults(engine.query(""));
+            engine.reset();
+            Console.Write("\nPress Enter to continue...");
+            Console.ReadLine();
 
             //Datisi Syllogism
+            Console.Clear();
+            Console.WriteLine("\nDatisi X==Y Z~=X :: Z~=Y  - Expect Success");
+            Console.WriteLine("     - all X are Y");
+            Console.WriteLine("     - some Z are X");
+            Console.WriteLine("Infer: some Z are Y");
+            Console.WriteLine("___________________________________________________");
+            engine.parse("ALL X ARE Y");
+            engine.parse("SOME Z ARE X");
+            outQueryResults(engine.query(""));
+            engine.reset();
+            Console.Write("\nPress Enter to continue...");
+            Console.ReadLine();
 
             //Recursive Datisi + Barbara
-
+            Console.Clear();
+            Console.WriteLine("\nDatisi + Barbara Recursive  - Expect Success");
+            Console.WriteLine("       - All X are Y");
+            Console.WriteLine("       - All A are X");
+            Console.WriteLine("       - Some Z are A");
+            Console.WriteLine("Infer: 6 DB entries from 3 inferences");
+            Console.WriteLine("___________________________________________________");
+            engine.parse("ALL X ARE Y");
+            engine.parse("ALL A ARE X");
+            engine.parse("SOME Z ARE A");
+            outQueryResults(engine.query(""));
+            engine.reset();
+            Console.Write("\nPress Enter to continue...");
+            Console.ReadLine();
 
 
 
