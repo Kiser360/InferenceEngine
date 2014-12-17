@@ -202,12 +202,6 @@ namespace InferenceEngine
 
         private bool makeInferences(string table, string noun1, string noun2)
         {
-            //No Inferences can be made when adding to the some table
-            if (table == "SOME")
-            {
-                return true;
-            }
-
             //Equvalence Case: X==Y Y==X
             //  If we don't account for this the other checks will result in permanent loop
             m_dbConnection.Open();
@@ -224,56 +218,93 @@ namespace InferenceEngine
             }
             m_dbConnection.Close();
 
-            //Alright so here is the logic: X==Y Y==Z :: X==Z
+            //Barbara Syllogism: Y==Z X==Y :: X==Z
             //  We are adding noun1 == noun2
             //  If there exists a rule noun2 == other_noun
             //  Then we can infer that noun1 == other_noun
-            m_dbConnection.Open();
-            sql = String.Format("select noun2 from rules_{0} where noun1 = \"{1}\"", table, noun2);
-            command = new SQLiteCommand(sql, m_dbConnection);
-            reader = command.ExecuteReader();
-            other_nouns = new List<string>();
-            while (reader.Read())
+            if (table == "ALL")
             {
-                string other_noun = (string)reader["noun2"];
-                Console.WriteLine(string.Format("Infering that {0} {1} are {2}", table, noun1, other_noun));
-                other_nouns.Add(other_noun);
-            }
-            m_dbConnection.Close();
-
-            for (int i = 0; i < other_nouns.Count; i++)
-            {
-                if(!insertInTable(table, noun1, other_nouns[i]))
+                m_dbConnection.Open();
+                sql = String.Format("select noun2 from rules_{0} where noun1 = \"{1}\"", table, noun2);
+                command = new SQLiteCommand(sql, m_dbConnection);
+                reader = command.ExecuteReader();
+                other_nouns = new List<string>();
+                while (reader.Read())
                 {
-                    return false;
+                    string other_noun = (string)reader["noun2"];
+                    Console.WriteLine(string.Format("Infering that {0} {1} are {2}", table, noun1, other_noun));
+                    other_nouns.Add(other_noun);
+                }
+                m_dbConnection.Close();
+
+                for (int i = 0; i < other_nouns.Count; i++)
+                {
+                    if (!insertInTable(table, noun1, other_nouns[i]))
+                    {
+                        return false;
+                    }
                 }
             }
 
-            //Also, MORE LOGIC: X==Y Z==X :: Z==Y
+            //Calarent Syllogism: X!=Y Z==X :: Z!=Y
             //  Adding noun1 == noun2
-            //  if there exists a rule other_noun == noun1
-            //  Then we can infer that other_noun == noun2
-            m_dbConnection.Open();
-            sql = String.Format("select noun1 from rules_{0} where noun2 = \"{1}\"", table, noun1);
-            command = new SQLiteCommand(sql, m_dbConnection);
-            reader = command.ExecuteReader();
-            other_nouns = new List<string>();
-            while (reader.Read())
+            //  if there exists a rule noun2 != other_noun
+            //  Then we can infer that noun1 != other_noun
+            if (table == "ALL")
             {
-                string other_noun = (string)reader["noun1"];
-                Console.WriteLine(string.Format("Infering that {0} {1} are {2}", table, other_noun, noun2));
-                other_nouns.Add(other_noun);
-            }
-            m_dbConnection.Close();
-
-            for (int i = 0; i < other_nouns.Count; i++)
-            {
-                if (!insertInTable(table, other_nouns[i], noun2))
+                m_dbConnection.Open();
+                sql = String.Format("select noun2 from rules_{0} where noun1 = \"{1}\"", "NO", noun2);
+                command = new SQLiteCommand(sql, m_dbConnection);
+                reader = command.ExecuteReader();
+                other_nouns = new List<string>();
+                while (reader.Read())
                 {
-                    return false;
+                    string other_noun = (string)reader["noun2"];
+                    Console.WriteLine(string.Format("Infering that {0} {1} are {2}", "NO", noun1, other_noun));
+                    other_nouns.Add(other_noun);
+                }
+                m_dbConnection.Close();
+
+                for (int i = 0; i < other_nouns.Count; i++)
+                {
+                    if (!insertInTable("NO", noun1, other_nouns[i]))
+                    {
+                        return false;
+                    }
                 }
             }
 
+
+            //Datisi Syllogism: X==Y Z~=X :: Z~=Y
+            //  Adding noun1 ~= noun2
+            //  if there exists a rule noun2 == other_noun
+            //  Then we can infer that noun1 ~= other_noun
+            if (table == "SOME")
+            {
+                m_dbConnection.Open();
+                sql = String.Format("select noun2 from rules_{0} where noun1 = \"{1}\"", "ALL", noun2);
+                command = new SQLiteCommand(sql, m_dbConnection);
+                reader = command.ExecuteReader();
+                other_nouns = new List<string>();
+                while (reader.Read())
+                {
+                    string other_noun = (string)reader["noun2"];
+                    Console.WriteLine(string.Format("Infering that {0} {1} are {2}", "SOME", noun1, other_noun));
+                    other_nouns.Add(other_noun);
+                }
+                m_dbConnection.Close();
+
+                for (int i = 0; i < other_nouns.Count; i++)
+                {
+                    if (!insertInTable("SOME", noun1, other_nouns[i]))
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            //There are many other Syllogisms but I haven't implemented a SOME_NOT 
+            //  table so were not going to be able to do it.. :(
 
             return true;
         }
@@ -564,7 +595,7 @@ namespace InferenceEngine
             //Test: insert to empty table
             //Assert: true
             Console.WriteLine("Test 1: Insert into empty DB");
-            if (insertInTable("ALL", "DOG", "mammal"))
+            if (insertInTable("ALL", "DOG", "MAMMAL"))
                 success();
             else
                 failure();
@@ -572,32 +603,15 @@ namespace InferenceEngine
             //Test: insert contradictory info
             //Assert: false
             Console.WriteLine("Test 2: Contradictory information");
-            if (!insertInTable("NO", "DOG", "mammal"))
+            if (!insertInTable("NO", "DOG", "MAMMAL"))
                 success();
             else
                 failure();
 
-            //Test: insert and make an inference
-            //Assert: true
-            Console.WriteLine("Test 3: Insertion and making an inference");
-            if (insertInTable("ALL", "mammal", "furry"))
-                success();
-            else
-                failure();
-
-            //Test: insert and make X==Y Z==X Z==Y inference
-            //Assert: False
-            Console.WriteLine("Test 4: Z==Y inference");
-            insertInTable("NO", "orange", "apple");
-            insertInTable("NO", "potatoe", "orange");
-            if (!insertInTable("ALL", "potatoe", "apple"))
-                success();
-            else
-                failure();
 
             //Test: insert and make recursive X==Y Z==X Z==Y inference
             //Assert: False
-            Console.WriteLine("Test 5: recursive inference Z==Y");
+            Console.WriteLine("Test 3: recursive inference Z==Y");
             insertInTable("ALL", "cat", "mammal");
             insertInTable("ALL", "furry", "has_hair");
             if (!insertInTable("NO", "DOG", "has_hair"))
@@ -607,7 +621,7 @@ namespace InferenceEngine
 
             //Test: revert changes from a shallow recursive inference Error
             //Assert: False
-            Console.WriteLine("Test 6: shallow recursive error");
+            Console.WriteLine("Test 4: shallow recursive error");
             reset();
             insertInTable("ALL", "thing1", "thing2");
             insertInTable("ALL", "thing2", "thing3");
@@ -620,7 +634,7 @@ namespace InferenceEngine
 
             //Test: revert changes from deep recursive X==Z inference Error
             //Assert: True
-            Console.WriteLine("Test 7: deep recursive error X==Z");
+            Console.WriteLine("Test 5: deep recursive error X==Z");
             reset();
             insertInTable("NO", "thing10", "thing11");
             insertInTable("NO", "thing20", "thing21");
@@ -636,7 +650,7 @@ namespace InferenceEngine
 
             //Test: revert changes from deep recursive Z==Y inference Error
             //Assert: True
-            Console.WriteLine("Test 8: deep recursive error Z==Y");
+            Console.WriteLine("Test 6: deep recursive error Z==Y");
             reset();
             insertInTable("NO", "thing10", "thing11");
             insertInTable("NO", "thing20", "thing21");

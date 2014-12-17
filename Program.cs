@@ -116,6 +116,7 @@ namespace InferenceEngine
                 }
             }
         }
+
         public static void testing(InfEng engine)
         {
             Console.Clear();
@@ -134,7 +135,7 @@ namespace InferenceEngine
             Console.WriteLine("Simple Assertion: ALL DOGS ARE MAMMALS");
             Console.WriteLine("___________________________________________________");
             engine.parse("ALL DOGS ARE MAMMALS");
-            outQueryResults(engine.query("DOGS"));
+            outQueryResults(engine.query(""));
             Console.Write("\nPress Enter to continue...");
             Console.ReadLine();
 
@@ -145,7 +146,7 @@ namespace InferenceEngine
             Console.WriteLine("Verify with a query on DOGS and expect not to see NO DOGS ARE MAMMALS");
             Console.WriteLine("___________________________________________________");
             engine.parse("NO DOGS ARE MAMMALS");
-            outQueryResults(engine.query("DOGS"));
+            outQueryResults(engine.query(""));
             Console.Write("\nPress Enter to continue...");
             Console.ReadLine();
 
@@ -156,55 +157,78 @@ namespace InferenceEngine
             Console.WriteLine("ALL MAMMALS ARE DOGS");
             Console.WriteLine("___________________________________________________");
             engine.parse("ALL MAMMALS ARE DOGS");
-            outQueryResults(engine.query("DOGS"));
+            outQueryResults(engine.query(""));
+            engine.reset();
             Console.Write("\nPress Enter to continue...");
             Console.ReadLine();
 
-            //X==Y Y==Z :: X==Z Inference
+            //Barbara X==Y Y==Z :: X==Z Inference
             Console.Clear();
-            Console.WriteLine("\nX==Y Y==Z :: X==Z - Expect Success");
-            Console.WriteLine("Adding: ALL MAMMALS ARE HAS_FUR");
-            Console.WriteLine("This should allow the db to infer that ALL DOGS ARE HAS_FUR");
+            Console.WriteLine("\nBarbara: X==Y Z==X :: Z==Y - Expect Success");
+            Console.WriteLine("     - all mammals are have_fur");
+            Console.WriteLine("     - all dogs are mammals");
+            Console.WriteLine("Infer: all dogs are have_fur");
             Console.WriteLine("___________________________________________________");
-            engine.parse("ALL MAMMALS ARE HAS_FUR");
-            outQueryResults(engine.query("DOGS"));
+            engine.parse("ALL MAMMALS ARE HAVE_FUR");
+            engine.parse("ALL DOGS ARE MAMMALS");
+            outQueryResults(engine.query(""));
+            engine.reset();
             Console.Write("\nPress Enter to continue...");
             Console.ReadLine();
 
-            //Recursive X==Y Y==Z :: X==Z Inference and table contradiction
+            //Barbara Recursive Inference
             Console.Clear();
-            Console.WriteLine("\nX==Y Y==Z :: X==Z - Expect Success");
-            Console.WriteLine("This will test recursive entries and contradictions across tables.");
-            Console.WriteLine("- First we add: SOME CATS ARE HAS_FUR");
-            Console.WriteLine("- Then we add: ALL CATS ARE MAMMALS");
-            Console.WriteLine("We expect the DB to reject the second entry because it will infer" +
-                            "\nALL CATS ARE HAS_FUR which contradicts the first entry." +
-                            "\nVerify with a query on cats and expect ALL CATS ARE MAMMALS to NOT be there.");
+            Console.WriteLine("\nBarbara Recursive Inference");
+            Console.WriteLine("               - all dogs are mammals");
+            Console.WriteLine("               - all mammals are have_fur");
+            Console.WriteLine("               - all pugs are dogs");
+            Console.WriteLine("Level 1   Infer: all pugs are mammals");
+            Console.WriteLine("Recursive Infer: all pugs are have_fur");
             Console.WriteLine("___________________________________________________");
-            engine.parse("SOME CATS ARE HAS_FUR");
-            engine.parse("ALL CATS ARE MAMMALS");
-            outQueryResults(engine.query("CATS"));
+            engine.parse("ALL DOGS ARE MAMMALS");
+            engine.parse("ALL MAMMALS ARE HAVE_FUR");
+            engine.parse("ALL PUGS ARE DOGS");
+            outQueryResults(engine.query(""));
+            engine.reset();
             Console.Write("\nPress Enter to continue...");
             Console.ReadLine();
 
-            //X==Y Z==X :: Z==Y Inference
+            //Recursive into error and revert changes
             Console.Clear();
-            Console.WriteLine("\nX==Y Z==Y :: Z==Y - Expect Success");
-            Console.WriteLine("Adding: ALL CATS ARE FIERCE");
-            Console.WriteLine("Adding: ALL LIONS ARE CATS");
-            Console.WriteLine("We expect the DB to accept both entries, it should infer");
-            Console.WriteLine("that ALL LIONS ARE FIERCE, output LIONS to verify");
-            engine.parse("ALL CATS ARE FIERCE");
-            engine.parse("ALL LIONS ARE CATS");
-            outQueryResults(engine.query("LIONS"));
+            Console.WriteLine("\nRecurse into error");
+            Console.WriteLine("\nExpect failure to insert and revert inferences");
+            Console.WriteLine("               - no pugs are have_fur");
+            Console.WriteLine("               - all dogs are mammals");
+            Console.WriteLine("               - all mammals are have_fur");
+            Console.WriteLine("               - all pugs are dogs");
+            Console.WriteLine("Level 1   Infer: all pugs are mammals");
+            Console.WriteLine("Recursive Infer: all pugs are have_fur");
+            Console.WriteLine("          Error: Contradiction revert inferences");
+            Console.WriteLine("___________________________________________________");
+            engine.parse("NO PUGS ARE HAVE_FUR");
+            engine.parse("ALL DOGS ARE MAMMALS");
+            engine.parse("ALL MAMMALS ARE HAVE_FUR");
+            engine.parse("ALL PUGS ARE DOGS");
+            outQueryResults(engine.query(""));
+            engine.reset();
             Console.Write("\nPress Enter to continue...");
             Console.ReadLine();
+
+
+            //Calarent Syllogism
+
+            //Calarent Syllogism from an inference (recursive)
+
+            //Datisi Syllogism
+
+            //Recursive Datisi + Barbara
 
 
 
 
             return;
         }
+
         public static void outQueryResults(List<string> results)
         {
             //Format and output all results
